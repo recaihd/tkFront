@@ -16,7 +16,6 @@
   <button onclick="enviar()">Enviar</button>
 
   <script>
-    // Troque pelo endereço do seu backend no Render/Railway
     const socket = new WebSocket("wss://tkback.onrender.com");
 
     const chat = document.getElementById("chat");
@@ -26,14 +25,20 @@
       const p = document.createElement("p");
       p.textContent = event.data;
       chat.appendChild(p);
+      chat.scrollTop = chat.scrollHeight; // auto-scroll
     };
 
     function enviar() {
-      if (msgInput.value) {
+      if (msgInput.value && socket.readyState === WebSocket.OPEN) {
         socket.send(msgInput.value);
         msgInput.value = "";
       }
     }
+
+    // Pressionar Enter também envia
+    msgInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") enviar();
+    });
   </script>
 </body>
 </html>
