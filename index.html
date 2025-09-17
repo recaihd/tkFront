@@ -5,37 +5,126 @@
   <title>Chat em Tempo Real</title>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; }
-    #chat { width: 300px; height: 200px; border: 1px solid #ccc; margin: 10px auto; padding: 5px; overflow-y: auto; }
-    #msg { width: 200px; }
+
+    #login, #chat-container {
+      margin: 20px auto;
+      width: 320px;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    #chat {
+      width: 300px;
+      height: 200px;
+      border: 1px solid #ccc;
+      margin: 10px auto;
+      padding: 5px;
+      overflow-y: auto;
+      text-align: left;
+    }
+
+    input {
+      margin: 5px 0;
+      padding: 5px;
+      width: 90%;
+    }
+
+    button {
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    .error {
+      color: red;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
   <h2>💬 Chat em Tempo Real</h2>
-  <div id="chat"></div>
-  <input type="text" id="msg" placeholder="Digite uma mensagem...">
-  <button onclick="enviar()">Enviar</button>
+
+  <!-- Tela de login -->
+  <div id="login">
+    <h3>Entrar</h3>
+    <input type="text" id="username" placeholder="Usuário (máx 28 caracteres)">
+    <input type="password" id="password" placeholder="Senha">
+    <button onclick="fazerLogin()">Login</button>
+    <p class="error" id="loginError"></p>
+  </div>
+
+  <!-- Tela do chat -->
+  <div id="chat-container">
+    <div id="chat"></div>
+    <input type="text" id="msg" placeholder="Digite uma mensagem...">
+    <button onclick="enviar()">Enviar</button>
+  </div>
 
   <script>
     const socket = new WebSocket("wss://tkback.onrender.com");
 
+    const loginDiv = document.getElementById("login");
+    const chatDiv = document.getElementById("chat-container");
     const chat = document.getElementById("chat");
     const msgInput = document.getElementById("msg");
+    const loginError = document.getElementById("loginError");
 
-    socket.onmessage = (event) => {
-      const p = document.createElement("p");
-      p.textContent = event.data;
-      chat.appendChild(p);
-      chat.scrollTop = chat.scrollHeight; // auto-scroll
+    let username = null;
+
+    // Quando conectar, exibe login
+    socket.onopen = () => {
+      loginDiv.style.display = "block";
     };
 
+    // Receber mensagens do servidor
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "login_required") {
+        loginDiv.style.display = "block";
+      }
+
+      if (data.type === "error") {
+        loginError.textContent = data.text;
+      }
+
+      if (data.type === "login_success") {
+        username = data.username;
+        loginDiv.style.display = "none";
+        chatDiv.style.display = "block";
+      }
+
+      if (data.type === "message") {
+        const p = document.createElement("p");
+        p.textContent = data.text;
+        chat.appendChild(p);
+        chat.scrollTop = chat.scrollHeight;
+      }
+    };
+
+    // Função login
+    function fazerLogin() {
+      const user = document.getElementById("username").value.trim();
+      const pass = document.getElementById("password").value.trim();
+
+      if (!user || !pass) {
+        loginError.textContent = "Preencha usuário e senha!";
+        return;
+      }
+
+      socket.send(JSON.stringify({ type: "login", username: user, password: pass }));
+    }
+
+    // Enviar mensagem
     function enviar() {
       if (msgInput.value && socket.readyState === WebSocket.OPEN) {
-        socket.send(msgInput.value);
+        socket.send(JSON.stringify({ type: "message", text: msgInput.value }));
         msgInput.value = "";
       }
     }
 
-    // Pressionar Enter também envia
+    // Enter envia mensagem
     msgInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") enviar();
     });
