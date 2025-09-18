@@ -13,7 +13,7 @@
 
     #login, #chat-container {
       margin: 20px auto;
-      width: 420px;
+      width: 500px;
       border: 1px solid #ccc;
       padding: 15px;
       border-radius: 8px;
@@ -22,17 +22,18 @@
     }
 
     #chat {
-      width: 300px;
-      height: 200px;
+      width: 90%;
+      height: 350px; /* maior */
       border: 1px solid #ccc;
       margin: 10px auto;
       padding: 10px;
       overflow-y: auto;
       text-align: left;
       background: #111;
+      border-radius: 5px;
     }
 
-    input {
+    input, button {
       margin: 10px 0;
       padding: 10px;
       width: 90%;
@@ -41,14 +42,37 @@
     }
 
     button {
-      padding: 5px 10px;
       cursor: pointer;
-      border-radius: 5px;
+      background: #4CAF50;
+      color: white;
+      font-weight: bold;
     }
 
     .error {
       color: red;
       font-size: 14px;
+    }
+
+    .message {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+    }
+
+    .message img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    #contador {
+      font-size: 13px;
+      color: #ccc;
+      margin-top: -8px;
+      margin-bottom: 8px;
+      text-align: right;
+      width: 90%;
     }
   </style>
 </head>
@@ -60,6 +84,7 @@
     <h3>Entrar</h3>
     <input type="text" id="username" placeholder="Usuário (máx 28 caracteres)">
     <input type="password" id="password" placeholder="Senha">
+    <input type="file" id="avatar" accept="image/*">
     <button onclick="fazerLogin()">Login</button>
     <p class="error" id="loginError"></p>
   </div>
@@ -68,6 +93,7 @@
   <div id="chat-container">
     <div id="chat"></div>
     <input type="text" id="msg" placeholder="Digite uma mensagem... (máx 70)">
+    <div id="contador">0/70</div>
     <button onclick="enviar()">Enviar</button>
     <p class="error" id="msgError"></p>
   </div>
@@ -81,15 +107,14 @@
     const msgInput = document.getElementById("msg");
     const loginError = document.getElementById("loginError");
     const msgError = document.getElementById("msgError");
+    const contador = document.getElementById("contador");
 
     let username = null;
 
-    // Quando conectar, exibe login
     socket.onopen = () => {
       loginDiv.style.display = "block";
     };
 
-    // Receber mensagens do servidor
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
@@ -108,9 +133,19 @@
       }
 
       if (data.type === "message") {
-        const p = document.createElement("p");
-        p.textContent = data.text;
-        chat.appendChild(p);
+        const div = document.createElement("div");
+        div.classList.add("message");
+
+        const img = document.createElement("img");
+        img.src = data.avatar || "https://via.placeholder.com/32";
+        
+        const span = document.createElement("span");
+        span.textContent = `${data.text}`;
+
+        div.appendChild(img);
+        div.appendChild(span);
+
+        chat.appendChild(div);
         chat.scrollTop = chat.scrollHeight;
       }
     };
@@ -119,13 +154,22 @@
     function fazerLogin() {
       const user = document.getElementById("username").value.trim();
       const pass = document.getElementById("password").value.trim();
+      const avatarInput = document.getElementById("avatar").files[0];
 
       if (!user || !pass) {
         loginError.textContent = "Preencha usuário e senha!";
         return;
       }
 
-      socket.send(JSON.stringify({ type: "login", username: user, password: pass }));
+      if (avatarInput) {
+        const reader = new FileReader();
+        reader.onload = function () {
+          socket.send(JSON.stringify({ type: "login", username: user, password: pass, avatar: reader.result }));
+        };
+        reader.readAsDataURL(avatarInput);
+      } else {
+        socket.send(JSON.stringify({ type: "login", username: user, password: pass }));
+      }
     }
 
     // Enviar mensagem
@@ -142,11 +186,16 @@
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "message", text: texto }));
         msgInput.value = "";
+        contador.textContent = "0/70";
         msgError.textContent = "";
       }
     }
 
-    // Enter envia mensagem
+    // Contador de caracteres em tempo real
+    msgInput.addEventListener("input", () => {
+      contador.textContent = `${msgInput.value.length}/70`;
+    });
+
     msgInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") enviar();
     });
