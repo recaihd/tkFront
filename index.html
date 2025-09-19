@@ -2,7 +2,8 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>💬 Chat em Tempo Real</title>
+  <title>Redeteki</title>
+  <link rel="icon" href="./img/blocksoft.png" type="image/png">
   <style>
     body { background-color: rgb(32, 28, 28); font-family: Arial, sans-serif; text-align: center; color: white; }
     #login, #chat-container { margin: 20px auto; width: 600px; border: 1px solid #ccc; padding: 15px; border-radius: 8px; display: none; background: #222; }
@@ -12,23 +13,25 @@
     .error { color: red; font-size: 14px; }
     #counter { font-size: 13px; margin-top: -5px; color: #bbb; }
     .message { display: flex; align-items: center; margin: 5px 0; }
-    .message img { width: 30px; height: 30px; border-radius: 50%; margin-right: 8px; }
+    .message img { border-radius: 8px; margin-right: 8px; max-width: 200px; max-height: 200px; }
     #users-list { text-align: left; background: #111; padding: 10px; border-radius: 8px; margin-top: 15px; }
     #users-list h4 { margin: 0 0 5px 0; font-size: 16px; }
     #users-list ul { list-style: none; padding: 0; margin: 0; }
     #users-list li { margin: 4px 0; display: flex; align-items: center; }
     #users-list li img { width: 20px; height: 20px; border-radius: 50%; margin-right: 6px; }
+    #logo1 { position: absolute; top: 60px; left: 170px; }
   </style>
 </head>
 <body>
-  <h2>💬 Chat em Tempo Real</h2>
+  <h2>Redeteki</h2>
 
   <!-- Tela de login -->
+  <img src="./img/niravergonha.png" width="300px" id="logo1">
   <div id="login">
     <h3>Entrar</h3>
     <input type="text" id="username" placeholder="Usuário (máx 28 caracteres)">
     <input type="password" id="password" placeholder="Senha">
-    <input type="text" id="avatar" placeholder="URL da foto de perfil">
+    <input type="file" id="avatarFile" accept="image/*">
     <button onclick="fazerLogin()">Login</button>
     <p class="error" id="loginError"></p>
   </div>
@@ -41,7 +44,7 @@
     <button onclick="enviar()">Enviar</button>
     <br>
     <input type="file" id="fileInput">
-    <button onclick="enviarArquivo()">📎 Enviar Arquivo</button>
+    <button id="foto1" onclick="enviarArquivo()">Enviar Arquivo</button>
 
     <!-- Lista de usuários -->
     <div id="users-list">
@@ -101,14 +104,33 @@
     function fazerLogin() {
       const user = document.getElementById("username").value.trim();
       const pass = document.getElementById("password").value.trim();
-      const avatar = document.getElementById("avatar").value.trim() || "https://i.imgur.com/6VBx3io.png";
+      const avatarFile = document.getElementById("avatarFile").files[0];
 
       if (!user || !pass) {
         loginError.textContent = "Preencha usuário e senha!";
         return;
       }
 
-      socket.send(JSON.stringify({ type: "login", username: user, password: pass, avatar }));
+      if (avatarFile) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64Data = reader.result.split(",")[1];
+          socket.send(JSON.stringify({ 
+            type: "login", 
+            username: user, 
+            password: pass, 
+            avatarFile: { name: avatarFile.name, data: base64Data }
+          }));
+        };
+        reader.readAsDataURL(avatarFile);
+      } else {
+        socket.send(JSON.stringify({ 
+          type: "login", 
+          username: user, 
+          password: pass, 
+          avatar: "https://i.imgur.com/6VBx3io.png" 
+        }));
+      }
     }
 
     function enviar() {
