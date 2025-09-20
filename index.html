@@ -6,7 +6,6 @@
   <link rel="description" content="Redeteki, um blog com chats em tempo real">
   <link rel="icon" href="./img/redetekiIcon.png" type="image/png">
   <style>
-
     body { 
       background-color: rgb(32, 28, 28);
       font-family: Arial, sans-serif;
@@ -14,7 +13,7 @@
       color: white;
     }
 
-    #login, #chat-container {
+    #login, #chat-container, #loading {
       margin: 20px auto;
       width: 600px;
       border: 1px solid #ccc;
@@ -22,6 +21,22 @@
       border-radius: 8px;
       display: none;
       background: #222;
+    }
+
+    #loading {
+      background: none;
+      border: none;
+    }
+
+    #loading img {
+      width: 120px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
     }
 
     #chat { 
@@ -64,10 +79,8 @@
       color: #bbb; 
     }
 
-    /* Botão estilizado para upload */
     #foto1 {
       display: inline-block;
-    
       background-size: cover;
       color: white;
       padding: 10px 20px;
@@ -76,88 +89,40 @@
       font-weight: bold;
     }
 
-    #foto1:hover {
-      opacity: 0.8;
-    }
+    #foto1:hover { opacity: 0.8; }
+    #fileName { margin-left: 10px; font-size: 14px; color: #ccc; }
 
-    #fileName {
-      margin-left: 10px;
-      font-size: 14px;
-      color: #ccc;
-    }
+    .message { display: flex; align-items: center; margin: 5px 0; }
+    .message img { border-radius: 8px; margin-right: 8px; max-width: 200px; max-height: 100px; }
 
-    .message { 
-      display: flex;
-      align-items: center; 
-      margin: 5px 0;
-    }
+    #users-list { text-align: left; background: #111; padding: 10px; border-radius: 8px; margin-top: 15px; }
+    #users-list h4 { margin: 0 0 5px 0; font-size: 16px; }
+    #users-list ul { list-style: none; padding: 0; margin: 0; }
+    #users-list li { margin: 4px 0; display: flex; align-items: center; }
+    #users-list li img { width: 20px; height: 20px; border-radius: 50%; margin-right: 6px; }
 
-    .message img {
-      border-radius: 8px; 
-      margin-right: 8px;
-      max-width: 200px;
-      max-height: 200px;
-    }
-
-    #users-list {
-      text-align: left; 
-      background: #111;
-      padding: 10px;
-      border-radius: 8px;
-      margin-top: 15px;
-    }
-
-    #users-list h4 {
-      margin: 0 0 5px 0; 
-      font-size: 16px; 
-    }
-
-    #users-list ul {
-      list-style: none; 
-      padding: 0;
-      margin: 0;
-    }
-
-    #users-list li { 
-      margin: 4px 0;
-      display: flex; 
-      align-items: center;
-    }
-    
-    #users-list li img {
-      width: 20px; 
-      height: 20px;
-      border-radius: 50%;
-      margin-right: 6px;
-    }
-
-    #logo1 {
-      position: absolute;
-      top: 28px;
-      left: 695px;
-    }
-
-    #redetekih2 {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-  
+    #logo1 { position: absolute; top: 28px; left: 695px; }
+    #redetekih2 { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); }
   </style>
 </head>
 <body>
   <h2 id="redetekih2">Redeteki</h2>
   <br><br><br><br>
 
-  <!-- Tela de login -->
   <img src="./img/redetekiIcon.png" id="logo1" width="50px">
+
+  <!-- Tela de carregamento -->
+  <div id="loading">
+    <img src="./img/megucarregando.png" alt="Carregando...">
+    <p>Conectando ao servidor...</p>
+  </div>
+
+  <!-- Tela de login -->
   <div id="login">
     <h3>Entrar</h3>
     <input type="text" id="username" placeholder="Usuário (máx 28 caracteres)">
     <input type="password" id="password" placeholder="Senha">
 
-    <!-- Input escondido + botão estilizado -->
     <input type="file" id="avatarFile" accept="image/*" hidden>
     <label for="avatarFile" id="foto1">Escolher arquivo</label>
     <span id="fileName">Nenhum arquivo escolhido</span>
@@ -174,7 +139,6 @@
     <div id="counter">0/70</div>
     <button onclick="enviar()">Enviar</button>
 
-    <!-- Lista de usuários -->
     <div id="users-list">
       <h4>Usuários online (0)</h4>
       <ul id="users"></ul>
@@ -182,15 +146,9 @@
   </div>
 
   <script>
-  document.getElementById("avatarFile").addEventListener("change", function() {
-    const fileName = this.files.length ? this.files[0].name : "Nenhum arquivo escolhido";
-    document.getElementById("fileName").textContent = fileName;
-  });
-
-  const socket = new WebSocket("wss://tkback.onrender.com");
-
   const loginDiv = document.getElementById("login");
   const chatDiv = document.getElementById("chat-container");
+  const loadingDiv = document.getElementById("loading");
   const chat = document.getElementById("chat");
   const msgInput = document.getElementById("msg");
   const loginError = document.getElementById("loginError");
@@ -200,7 +158,11 @@
 
   let username = null;
 
-  // tenta login automático
+  const socket = new WebSocket("wss://tkback.onrender.com");
+
+  // mostra loading enquanto conecta
+  loadingDiv.style.display = "block";
+
   socket.addEventListener("open", () => {
     const savedUser = localStorage.getItem("username");
     const savedPass = localStorage.getItem("password");
@@ -213,8 +175,6 @@
         password: savedPass,
         avatar: savedAvatar || "./img/redetekiIcon2.png"
       }));
-    } else {
-      loginDiv.style.display = "block";
     }
   });
 
@@ -222,6 +182,7 @@
     const data = JSON.parse(event.data);
 
     if (data.type === "login_required") {
+      loadingDiv.style.display = "none";
       loginDiv.style.display = "block";
       chatDiv.style.display = "none";
     }
@@ -232,10 +193,10 @@
 
     if (data.type === "login_success") {
       username = data.username;
+      loadingDiv.style.display = "none";
       loginDiv.style.display = "none";
       chatDiv.style.display = "block";
 
-      // salva no localStorage
       const pass = document.getElementById("password").value.trim();
       const avatarFile = document.getElementById("avatarFile").files[0];
       localStorage.setItem("username", username);
@@ -315,7 +276,6 @@
     counter.textContent = `${len}/70`;
   });
 
-  // heartbeat (mantém conexão viva)
   setInterval(() => {
     if (socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "ping" }));
